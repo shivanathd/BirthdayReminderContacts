@@ -1,0 +1,14 @@
+Hello {!Contact.FirstName},
+
+We're reaching out to remind you that {!BirthdayReminder__c.Contact__r.Name} has a birthday coming up on {!BirthdayReminder__c.BirthdayDate__c}.
+
+This would be a great time to:
+- Send them a birthday card
+- Give them a call
+- Schedule a meeting to catch up
+- Send a gift
+
+Building strong relationships with our contacts is key to our success. Don't miss this opportunity to connect!
+
+Best regards,
+The {!Organization.Name} Team

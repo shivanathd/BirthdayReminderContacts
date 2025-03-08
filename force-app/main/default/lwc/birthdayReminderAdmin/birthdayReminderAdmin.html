@@ -1,0 +1,240 @@
+<template>
+    <!-- Main container with card -->
+    <lightning-card title="Birthday Reminder Administration" icon-name="standard:contact">
+        
+        <!-- Loading spinner -->
+        <template if:true={isLoading}>
+            <lightning-spinner alternative-text="Loading" size="medium"></lightning-spinner>
+        </template>
+        
+        <!-- Card actions -->
+        <div slot="actions">
+            <lightning-button-group>
+                <lightning-button label="Refresh" icon-name="utility:refresh" onclick={handleRefreshData}></lightning-button>
+                <lightning-button label="Run Now" icon-name="utility:play" variant="brand" onclick={handleRunBatchNow}></lightning-button>
+            </lightning-button-group>
+        </div>
+        
+        <!-- Tabs -->
+        <lightning-tabset>
+            <!-- Settings Tab -->
+            <lightning-tab label="Settings" value="settings" onactive={handleTabChange}>
+                <template if:true={settings}>
+                    <div class="slds-p-around_medium">
+                        <lightning-input 
+                            type="number" 
+                            label="Reminder Days"
+                            name="reminderDays"
+                            value={settings.ReminderDays__c}
+                            min="1"
+                            max="30"
+                            onchange={handleSettingsChange}
+                            required>
+                        </lightning-input>
+                        
+                        <lightning-combobox
+                            label="Email Template"
+                            name="emailTemplateId"
+                            value={settings.EmailTemplateId__c}
+                            options={emailTemplates}
+                            onchange={handleSettingsChange}
+                            required>
+                        </lightning-combobox>
+                        
+                        <lightning-input 
+                            type="text" 
+                            label="Recipient Email Addresses (comma-separated)"
+                            name="recipientEmails"
+                            value={settings.RecipientEmails__c}
+                            onchange={handleSettingsChange}>
+                        </lightning-input>
+                        
+                        <lightning-input 
+                            type="checkbox" 
+                            label="Enable Email Notifications"
+                            name="enableEmailNotifications"
+                            checked={settings.EnableEmailNotifications__c}
+                            onchange={handleSettingsChange}>
+                        </lightning-input>
+                        
+                        <lightning-input 
+                            type="checkbox" 
+                            label="Enable Chatter Posts"
+                            name="enableChatterPosts"
+                            checked={settings.EnableChatterPosts__c}
+                            onchange={handleSettingsChange}>
+                        </lightning-input>
+                        
+                        <div class="slds-m-top_medium">
+                            <lightning-button 
+                                variant="brand" 
+                                label="Save Settings" 
+                                onclick={handleSaveSettings}>
+                            </lightning-button>
+                        </div>
+                    </div>
+                </template>
+            </lightning-tab>
+            
+            <!-- Schedule Tab -->
+            <lightning-tab label="Schedule" value="schedule" onactive={handleTabChange}>
+                <div class="slds-p-around_medium">
+                    <div class="slds-grid slds-gutters">
+                        <div class="slds-col">
+                            <lightning-input 
+                                type="text" 
+                                label="Job Name"
+                                value={jobName}
+                                onchange={handleJobNameChange}>
+                            </lightning-input>
+                        </div>
+                        <div class="slds-col">
+                            <lightning-combobox
+                                label="Hour"
+                                value={scheduledHour}
+                                options={hoursOptions}
+                                onchange={handleHourChange}>
+                            </lightning-combobox>
+                        </div>
+                        <div class="slds-col">
+                            <lightning-combobox
+                                label="Minute"
+                                value={scheduledMinute}
+                                options={minutesOptions}
+                                onchange={handleMinuteChange}>
+                            </lightning-combobox>
+                        </div>
+                    </div>
+                    
+                    <div class="slds-m-top_medium">
+                        <lightning-button 
+                            variant="brand" 
+                            label="Schedule Job" 
+                            onclick={handleScheduleJob}>
+                        </lightning-button>
+                    </div>
+                    
+                    <div class="slds-m-top_large">
+                        <h2 class="slds-text-heading_medium slds-m-bottom_small">Scheduled Jobs</h2>
+                        
+                        <template if:true={scheduledJobs}>
+                            <template if:false={scheduledJobs.length}>
+                                <div class="slds-text-color_weak">No scheduled jobs found</div>
+                            </template>
+                            
+                            <template if:true={scheduledJobs.length}>
+                                <table class="slds-table slds-table_bordered slds-table_cell-buffer">
+                                    <thead>
+                                        <tr class="slds-line-height_reset">
+                                            <th class="slds-text-title_caps" scope="col">Job Name</th>
+                                            <th class="slds-text-title_caps" scope="col">Cron Expression</th>
+                                            <th class="slds-text-title_caps" scope="col">Next Run Time</th>
+                                            <th class="slds-text-title_caps" scope="col">State</th>
+                                            <th class="slds-text-title_caps" scope="col">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <template for:each={scheduledJobs} for:item="job">
+                                            <tr key={job.Id} class="slds-hint-parent">
+                                                <td>{job.CronJobDetail.Name}</td>
+                                                <td>{job.CronExpression}</td>
+                                                <td>{job.NextFireTime}</td>
+                                                <td>{job.State}</td>
+                                                <td>
+                                                    <lightning-button-icon 
+                                                        icon-name="utility:delete" 
+                                                        alternative-text="Delete" 
+                                                        title="Delete" 
+                                                        variant="border-filled"
+                                                        data-id={job.Id}
+                                                        onclick={handleDeleteJob}>
+                                                    </lightning-button-icon>
+                                                </td>
+                                            </tr>
+                                        </template>
+                                    </tbody>
+                                </table>
+                            </template>
+                        </template>
+                    </div>
+                </div>
+            </lightning-tab>
+            
+            <!-- Dashboard Tab -->
+            <lightning-tab label="Dashboard" value="dashboard" onactive={handleTabChange}>
+                <div class="slds-p-around_medium">
+                    <template if:true={stats}>
+                        <div class="slds-grid slds-gutters slds-wrap">
+                            <!-- Card 1: Upcoming Birthdays -->
+                            <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-2 slds-p-around_small">
+                                <div class="slds-box slds-box_x-small slds-theme_shade">
+                                    <div class="slds-media">
+                                        <div class="slds-media__figure">
+                                            <lightning-icon icon-name="standard:contact" size="small"></lightning-icon>
+                                        </div>
+                                        <div class="slds-media__body">
+                                            <p class="slds-text-heading_small">Upcoming Birthdays</p>
+                                            <p class="slds-text-heading_large">{upcomingBirthdayCount}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Card 2: Reminders Sent Today -->
+                            <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-2 slds-p-around_small">
+                                <div class="slds-box slds-box_x-small slds-theme_shade">
+                                    <div class="slds-media">
+                                        <div class="slds-media__figure">
+                                            <lightning-icon icon-name="standard:email" size="small"></lightning-icon>
+                                        </div>
+                                        <div class="slds-media__body">
+                                            <p class="slds-text-heading_small">Reminders Sent Today</p>
+                                            <p class="slds-text-heading_large">{remindersSentToday}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Card 3: Reminders Sent This Month -->
+                            <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-2 slds-p-around_small">
+                                <div class="slds-box slds-box_x-small slds-theme_shade">
+                                    <div class="slds-media">
+                                        <div class="slds-media__figure">
+                                            <lightning-icon icon-name="standard:report" size="small"></lightning-icon>
+                                        </div>
+                                        <div class="slds-media__body">
+                                            <p class="slds-text-heading_small">Reminders Sent This Month</p>
+                                            <p class="slds-text-heading_large">{remindersSentThisMonth}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Card 4: Total Reminders -->
+                            <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-2 slds-p-around_small">
+                                <div class="slds-box slds-box_x-small slds-theme_shade">
+                                    <div class="slds-media">
+                                        <div class="slds-media__figure">
+                                            <lightning-icon icon-name="standard:metrics" size="small"></lightning-icon>
+                                        </div>
+                                        <div class="slds-media__body">
+                                            <p class="slds-text-heading_small">Total Reminders</p>
+                                            <p class="slds-text-heading_large">{totalReminders}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </lightning-tab>
+        </lightning-tabset>
+        
+        <!-- Footer -->
+        <div slot="footer">
+            <p class="slds-text-align_center slds-text-body_small">
+                Birthday Reminder App - v1.0
+            </p>
+        </div>
+    </lightning-card>
+</template>
